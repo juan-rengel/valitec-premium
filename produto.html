@@ -35,6 +35,7 @@
     .zoomModal img { max-height: 90%; max-width: 90%; border-radius: 12px; box-shadow: 0 0 20px #000; }
 
 
+
   </style>
 </head>
 <body>
@@ -57,14 +58,11 @@
       <a href="#" class="logout" onclick="localStorage.clear(); location.href='index.html'"><i class="ri-logout-box-line"></i> Sair</a>
   </nav>
 </aside>
-
+ 
 <!-- HEADER -->
 <header class="header">
-  <button class="menu-btn" onclick="toggleSidebar()">
-    <i class="ri-menu-line"></i>
-</button>
 
-  <h1 class="page-title">Cadastro de Produto</h1>
+  <h1 class="page-title">cadastro de produtos</h1>
   <div class="header-user"><i class="ri-user-line"></i></div>
 </header>
 
@@ -636,14 +634,18 @@ saveAll.onclick=async()=>{
 
 
 
-
 <script>
-function toggleSidebar() {
-  if (window.innerWidth <= 900) {
-    document.querySelector('.sidebar').classList.toggle('open');
-  }
-}
+const sidebar = document.querySelector('.sidebar');
+const hamburger = document.createElement('button');
+hamburger.className = 'hamburger';
+hamburger.textContent = '☰';
+hamburger.onclick = () => {
+  sidebar.classList.toggle('open');
+};
+document.body.appendChild(hamburger);
 </script>
+
+
 
 </body>
 </html>

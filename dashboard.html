@@ -6,15 +6,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard ValiTec</title>
 <link rel="stylesheet" href="base.css">
+
+<style>
+  @media (max-width: 900px) {
+    .page { margin-left: 250px; }
+}
+
+</style>
 </head>
 
 <body>
+
+<div class="menu-acima">
+</div>
 <!-- Aqui vou aplicar o novo MENU + HEADER -->
 
 <!-- SIDEBAR - MENU VALITEC -->
 <aside class="sidebar">
     <div class="sidebar-logo">
-        <img src="logo.png" alt="ValiTec" />
+        
         <h2>ValiTec</h2>
     </div>
 
@@ -32,9 +42,7 @@
 
 <!-- HEADER -->
 <header class="page">
-    <button class="menu-btn" onclick="toggleSidebar()">
-        <i class="ri-menu-line"></i>
-    </button>
+
     <h1 class="page-title">Dashboard</h1>
     <div class="header-user"><i class="icon-user"></i></div>
 </header>
@@ -265,13 +273,13 @@ function toggleSidebar() {
 </script>
 
 <script>
-/* MENU HAMBÚRGUER UNIVERSAL */<!-- hamburger helper -->
-
 const sidebar = document.querySelector('.sidebar');
 const hamburger = document.createElement('button');
 hamburger.className = 'hamburger';
 hamburger.textContent = '☰';
-hamburger.onclick = () => sidebar.classList.toggle('open');
+hamburger.onclick = () => {
+  sidebar.classList.toggle('open');
+};
 document.body.appendChild(hamburger);
 </script>
 
