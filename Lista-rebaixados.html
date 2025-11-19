@@ -57,13 +57,16 @@
   box-shadow: 0 0 20px #000;
 }
 
-
+.conter{
+  max-width: 1100px;
+  margin: auto;
+}
  
 </style>
  
 </head>
 <body>
-
+<div class="conter">
 <!-- SIDEBAR -->
 <aside class="sidebar">
   <div class="sidebar-logo">
@@ -95,7 +98,7 @@
   <input type="text" id="buscaRebaixado" class="input" placeholder="🔍 Buscar produto...">
   <div id="listaRebaixados" class="lista-produtos"></div>
 </section>
-
+</div>
 <script>
 function toggleSidebar() {
   if (window.innerWidth <= 900) {

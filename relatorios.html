@@ -14,13 +14,23 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+  <style>
+    .corpo{
+      max-width: 700px;
+      margin: auto;
+    }
 
+   
+@media (max-width: 500px) {
+    .corpo { width: 300px;  }
+}
+  </style>
 </head>
 
 <body class="relatorios-page">
 <canvas id="particleCanvas"></canvas>
 
-<div class="app-container">
+<div class="app-container corpo">
   <aside class="sidebar">
     <h1></h1>
     <nav>
