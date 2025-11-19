@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard ValiTec</title>
+<link rel="stylesheet" href="base.css">
+</head>
+
+<body>
+<!-- Aqui vou aplicar o novo MENU + HEADER -->
+
+<!-- SIDEBAR - MENU VALITEC -->
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <img src="logo.png" alt="ValiTec" />
+        <h2>ValiTec</h2>
+    </div>
+
+    <nav class="sidebar-menu">
+        <a href="dashboard.html" class="active"><i class="ri-dashboard-line"></i> Dashboard</a>
+        <a href="produto.html"><i class="ri-price-tag-3-line"></i> Produtos</a>
+        <a href="Lista-produtos.html"><i class="ri-file-list-line"></i> Lista de Produtos</a>
+        <a href="Painel-rebaixa.html"><i class="ri-discount-percent-line"></i> Rebaixas</a>
+        <a href="cadastro-usuarios.html"><i class="ri-user-lineline"></i> Usuários</a>
+        <a href="relatorios.html"><i class="ri-bar-chart-line"></i> Relatórios</a>
+        <a href="perfil.html"><i class="icon-user"></i> Perfil</a>
+        <a href="index.html" class="logout"><i class="ri-logout-box-line"></i> Sair</a>
+    </nav>
+</aside>
+
+<!-- HEADER -->
+<header class="page">
+    <button class="menu-btn" onclick="toggleSidebar()">
+        <i class="ri-menu-line"></i>
+    </button>
+    <h1 class="page-title">Dashboard</h1>
+    <div class="header-user"><i class="icon-user"></i></div>
+</header>
+
+<!-- CONTEÚDO DA PÁGINA -->
+<section class="main">
+    <h2 class="title neon">Visão Geral</h2>
+    <div class="grid grid-3">
+
+        <div class="kpi">
+            <h2 id="totalProdutos">0</h2>
+            <span>Total de Produtos</span>
+        </div>
+
+        <div class="kpi">
+            <h2 id="vencidos">0</h2>
+            <span>Produtos Vencidos</span>
+        </div>
+
+        <div class="kpi">
+            <h2 id="vencendoHoje">0</h2>
+            <span>Vencendo Hoje</span>
+        </div>
+
+        <div class="kpi">
+            <h2 id="pertoVencer">0</h2>
+            <span>Perto de Vencer ( <= 5 dias)</span>
+        </div>
+
+    </div>
+
+    <!-- BOTÃO PARA ABRIR O RESUMO POR SETOR -->
+<button id="abrirSetor" class="btn-abrir-setor">Resumo por Setor</button>
+
+<!-- MODAL DE SETORES -->
+<div id="modalSetor" class="modal-setor" style="
+    display:none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7);
+    justify-content: center;
+    align-items: center;
+">
+    <div style="
+        background: #1a1a1a;
+        padding: 20px;
+        border-radius: 10px;
+        width: 90%;
+        max-width: 400px;
+        text-align: center;
+        color: white;
+    ">
+        <h2>Resumo por Setor</h2>
+
+        <canvas id="graficoSetoresModal" width="300" height="300"></canvas>
+
+        <button id="fecharSetor"
+            style="
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #ff5c5c;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        ">Fechar</button>
+    </div>
+</div>
+</section>
+
+<script>
+function toggleSidebar() {
+  if (window.innerWidth <= 900) {
+    document.querySelector('.sidebar').classList.toggle('open');
+  }
+}
+</script>
+
+
+  <script src="chart.js"></script>
+
+
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+    authDomain: "valitec-mj.firebaseapp.com",
+    projectId: "valitec-mj",
+    storageBucket: "valitec-mj.firebasestorage.app",
+    messagingSenderId: "616592039657",
+    appId: "1:616592039657:web:3827a890474111be85da78"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  let lojaAtual = null;
+  let graficoSetor = null;
+
+  // === Função para ocultar "Cadastrar Usuários" se não for master ===
+  function ocultarMenuPorCargo(cargo) {
+    const linkCadastro = document.querySelector("a[href='cadastro-usuarios.html']");
+    if (!linkCadastro) return;
+
+    if (cargo !== "master") {
+      linkCadastro.style.display = "none";
+    }
+  }
+
+  // === Carregar loja do usuário logado ===
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+
+    const snap = await getDoc(doc(db, "usuarios", user.email));
+    if (!snap.exists()) return;
+
+    lojaAtual = snap.data().loja;
+    const cargo = snap.data().cargo;
+
+    // Aplica ocultação do menu ✔
+    ocultarMenuPorCargo(cargo);
+
+    carregarIndicadores();
+  });
+
+  // === Indicadores principais ===
+  async function carregarIndicadores() {
+    if (!lojaAtual) return;
+
+    const ref = collection(db, `lojas/${lojaAtual}/produtos`);
+    const snap = await getDocs(ref);
+
+    let total = 0, vencidos = 0, vencendoHoje = 0, pertoVencer = 0;
+    const hoje = new Date();
+
+    snap.forEach(docItem => {
+      const p = docItem.data();
+      if (!p.dataValidadeISO) return;
+
+      total++;
+      const validade = new Date(p.dataValidadeISO);
+      const diff = Math.ceil((validade - hoje) / (1000 * 60 * 60 * 24));
+
+      if (diff < 0) vencidos++;
+      else if (diff === 0) vencendoHoje++;
+      else if (diff <= 5) pertoVencer++;
+    });
+
+    document.getElementById("totalProdutos").textContent = total;
+    document.getElementById("vencidos").textContent = vencidos;
+    document.getElementById("vencendoHoje").textContent = vencendoHoje;
+    document.getElementById("pertoVencer").textContent = pertoVencer;
+  }
+
+  // === Gráfico Setor ===
+  async function abrirResumoSetor() {
+    if (!lojaAtual) return alert("Loja não identificada.");
+    const modal = document.getElementById("modalSetor");
+    modal.style.display = "flex";
+
+    const ref = collection(db, `lojas/${lojaAtual}/produtos`);
+    const snap = await getDocs(ref);
+
+    const setores = {};
+    snap.forEach(docItem => {
+      const p = docItem.data();
+      if (!p.setor) return;
+      setores[p.setor] = (setores[p.setor] || 0) + 1;
+    });
+
+    const ctx = document.getElementById("graficoSetoresModal").getContext("2d");
+    if (graficoSetor) graficoSetor.destroy();
+
+    graficoSetor = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(setores),
+        datasets: [{
+          data: Object.values(setores),
+          backgroundColor: ["#00C8FF","#4EFF9A","#FFD700","#FF6B6B","#9B5DE5","#F15BB5","#00BBF9"]
+        }]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#fff' } } }
+      }
+    });
+  }
+
+  document.getElementById("abrirSetor").addEventListener("click", abrirResumoSetor);
+  document.getElementById("fecharSetor").addEventListener("click", () => {
+    document.getElementById("modalSetor").style.display = "none";
+  });
+  </script>
+
+  <script>
+
+  // --- Fundo de partículas ---
+  const canvas = document.getElementById('particleCanvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+    window.addEventListener('resize', resize); resize();
+    const particles = Array.from({length:60},()=>({
+      x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*2+1,
+      sx:(Math.random()-0.5)*0.6,sy:(Math.random()-0.5)*0.6
+    }));
+    function animate(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      particles.forEach(p=>{
+        p.x+=p.sx;p.y+=p.sy;
+        if(p.x<0)p.x=canvas.width;if(p.x>canvas.width)p.x=0;
+        if(p.y<0)p.y=canvas.height;if(p.y>canvas.height)p.y=0;
+        ctx.fillStyle='rgba(255,255,255,0.07)';
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+      });
+      requestAnimationFrame(animate);
+    }
+    animate();
+  }
+
+
+
+</script>
+
+<script>
+/* MENU HAMBÚRGUER UNIVERSAL */<!-- hamburger helper -->
+
+const sidebar = document.querySelector('.sidebar');
+const hamburger = document.createElement('button');
+hamburger.className = 'hamburger';
+hamburger.textContent = '☰';
+hamburger.onclick = () => sidebar.classList.toggle('open');
+document.body.appendChild(hamburger);
+</script>
+
+
+</body>
+</html>

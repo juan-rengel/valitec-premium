@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Painel — Responsável Rebaixa — ValiTec MJ</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+
+  <style>
+    .grid-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:20px; }
+    .card { background:var(--bg-card); padding:20px; border-radius:var(--radius); box-shadow:var(--shadow); cursor:pointer; transition:0.2s; }
+    .card:hover { transform:translateY(-4px); box-shadow:0 0 20px var(--primary-glow); }
+    header.header { display:flex; align-items:center; justify-content:space-between; padding:14px; background:var(--bg-card); border-radius:var(--radius); box-shadow:var(--shadow); }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo.png" alt="ValiTec" />
+    <h2>ValiTec</h2>
+  </div>
+  <nav class="sidebar-menu">
+    <a href="dashboard.html"><i class="ri-dashboard-line"></i> Dashboard</a>
+    <a href="produto.html"><i class="ri-price-tag-3-line"></i> Cadastrar Produto</a>
+    <a href="Lista-produtos.html"><i class="ri-file-list-line"></i> Lista de Produtos</a>
+    <a href="Lista-rebaixados.html"><i class="ri-discount-percent-line"></i> Produtos Rebaixados</a>
+    <a href="calendario.html"><i class="ri-calendar-line"></i> Calendário</a>
+    <a href="perfil.html"><i class="ri-user-line"></i> Perfil</a>
+    <a href="cadastro-usuarios.html"><i class="ri-group-line"></i> Usuários</a>
+    <a href="relatorios.html"><i class="ri-bar-chart-line"></i> Relatórios</a>
+    <a href="#" class="logout" onclick="localStorage.clear(); location.href='index.html'"><i class="ri-logout-box-line"></i> Sair</a>
+  </nav>
+</aside>
+
+<header class="header">
+  <button class="menu-btn" onclick="toggleSidebar()"><i class="ri-menu-line"></i></button>
+  <h1>Painel — Responsável Rebaixa</h1>
+  <button id="btnTema" class="btn">Tema</button>
+</header>
+
+<section class="page">
+  <div class="barra-acao">
+    <span class="loja-info">Loja atual:</span>
+    <select id="selectLoja"></select>
+    <button id="btnVoltarPainel" class="btn-outline">Voltar ao Painel</button>
+  </div>
+
+  <section class="grid-cards" id="cardsWrap">
+    <div class="card" id="cardProdutos" onclick="acessar('Lista-produtos.html')">
+      <h3>Lista de Produtos</h3>
+      <p>Visualizar produtos da loja selecionada</p>
+    </div>
+
+    <div class="card" id="cardRebaixados" onclick="acessar('Lista-rebaixados.html')">
+      <h3>Produtos Rebaixados</h3>
+      <p>Ver rebaixas da loja selecionada</p>
+    </div>
+
+    <div class="card" id="cardCalendario" onclick="acessar('calendario.html')">
+      <h3>Calendário</h3>
+      <p>Consultar vencimentos por data</p>
+    </div>
+
+    <div class="card" id="cardRelatorios" onclick="acessar('relatorios.html')">
+      <h3>Relatórios</h3>
+      <p>Exportações por loja</p>
+    </div>
+  </section>
+
+  <div class="cta-wrap">
+    <button id="btnGerente" class="btn" disabled>📲 Falar com o Gerente</button>
+  </div>
+</section>
+
+<script>
+function toggleSidebar() {
+  if (window.innerWidth <= 900) {
+    document.querySelector('.sidebar').classList.toggle('open');
+  }
+}
+</script>
+
+<!-- Mantive todo o JS Firebase original, pois os IDs foram preservados -->
+<!-- scripts (keeps firebase logic + behavior) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, query, where, getDocs, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+    authDomain: "valitec-mj.firebaseapp.com",
+    projectId: "valitec-mj",
+    storageBucket: "valitec-mj.firebasestorage.app",
+    messagingSenderId: "616592039657",
+    appId: "1:616592039657:web:3827a890474111be85da78"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  const selectLoja = document.getElementById("selectLoja");
+  const btnGerente = document.getElementById("btnGerente");
+  const btnVoltar = document.getElementById("btnVoltarPainel");
+  let gerenteTelefone = null;
+  let cargoLocal = localStorage.getItem("cargo"); // fallback quick check
+
+  // persist last selected loja
+  const lojasValidas = ["loja_cd_cidade","loja_cidade","loja_terranova","loja_manoa","loja_zumbi","loja_oswaldo","loja_mosaico"];
+
+  // Helper abrir whatsapp
+  function abrirWhatsNumero(numero, texto){
+    if(!numero) return alert("Número não configurado.");
+    const only = numero.replace(/\D/g,"");
+    const url = `https://wa.me/55${only}?text=${encodeURIComponent(texto)}`;
+    window.open(url,"_blank");
+  }
+
+  // monta select com lastSelectedLoja (se houver)
+  function aplicarLojaInicial(loja){
+    if(!loja) loja = localStorage.getItem("lastSelectedLoja") || "";
+    if(loja && lojasValidas.includes(loja)){
+      selectLoja.value = loja;
+    } else {
+      selectLoja.value = "";
+    }
+  }
+
+  // Ao mudar loja no select -> salva e busca gerente
+  selectLoja.onchange = async () => {
+    const loja = selectLoja.value;
+    localStorage.setItem("lastSelectedLoja", loja);
+    btnGerente.disabled = true;
+    gerenteTelefone = null;
+
+    if (!loja) return;
+
+    try {
+      const q = query(collection(db, "usuarios"),
+        where("cargo", "==", "gerente"),
+        where("loja", "==", loja)
+      );
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        gerenteTelefone = null;
+        btnGerente.disabled = true;
+        return;
+      }
+      const g = snap.docs[0].data();
+      // tenta dois campos possíveis, para máxima compatibilidade
+      gerenteTelefone = g.whatsGerente || g.whatsapp || g.whats || null;
+      btnGerente.disabled = !gerenteTelefone;
+    } catch (e) {
+      console.error("Erro buscar gerente:", e);
+      gerenteTelefone = null;
+      btnGerente.disabled = true;
+    }
+  };
+
+  btnGerente.onclick = () => {
+    if (!gerenteTelefone) return alert("Gerente não possui WhatsApp cadastrado.");
+    const lojaId = selectLoja.value;
+    const usuario = localStorage.getItem("usuarioLogado") || "responsavel";
+    const msg = `Olá, Gerente! O responsável pela rebaixa (${usuario}) está revisando produtos da sua loja (${lojaId}).`;
+    abrirWhatsNumero(gerenteTelefone, msg);
+  };
+
+  btnVoltar.onclick = () => location.href = "dashboard.html";
+
+  // acessar páginas com ?loja=
+  window.acessar = (pagina) => {
+    const loja = selectLoja.value;
+    if (!loja) return alert("Selecione uma loja primeiro.");
+    window.location.href = `${pagina}?loja=${encodeURIComponent(loja)}`;
+  };
+
+  // Checagem de cargo e autorização via Firebase auth -> garante estado correto (robusto)
+  onAuthStateChanged(auth, async (user) => {
+    // Se não houver usuário logado via Firebase, tenta fallback para localStorage cargo
+    if (!user) {
+      // se não tiver cargo no localstorage, manda para index
+      if (!cargoLocal) return location.href = "index.html";
+      // se cargo existir, permitir só se responsavel
+      if (cargoLocal !== "responsavel") return location.href = "index.html";
+      aplicarLojaInicial(localStorage.getItem("lastSelectedLoja"));
+      return;
+    }
+
+    try {
+      const snap = await getDoc(doc(db, "usuarios", user.email));
+      if (!snap.exists()) {
+        alert("Usuário sem perfil.");
+        return location.href = "index.html";
+      }
+      const dados = snap.data();
+      const cargo = dados.cargo || localStorage.getItem("cargo") || "";
+      // somente responsável pode usar este painel (conforme config original)
+      if (cargo !== "responsavel") {
+        // se for master permitir visualizar (opcional) — mantive bloqueio original: redirect
+        return location.href = "index.html";
+      }
+      // aplica loja padrão do usuário (mas resp. pode trocar)
+      const lojaUser = dados.loja || localStorage.getItem("loja") || "";
+      aplicarLojaInicial(localStorage.getItem("lastSelectedLoja") || lojaUser);
+    } catch (e) {
+      console.error("Erro auth check:", e);
+      aplicarLojaInicial(localStorage.getItem("lastSelectedLoja"));
+    }
+  });
+</script>
+
+</body>
+</html>

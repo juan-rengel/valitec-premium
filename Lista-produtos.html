@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ValiTec MJ — Lista de Produtos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+
+  <style>
+    .lista-produtos { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px; margin-top:20px; }
+
+    .produto-card { background:var(--bg-card);
+       padding:14px;
+        border-radius:14px;
+        box-shadow:var(--shadow);
+        transition:0.25s;
+        display:flex;
+        gap:12px;
+        }
+
+    .produto-card:hover { transform:translateY(-3px); box-shadow:0 0 18px var(--primary-glow); }
+    .produto-card img {
+       width:90px;
+        height:90px;
+         border-radius:10px;
+          object-fit:cover;
+           cursor:pointer;
+           }
+    .zoomModal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:9999; backdrop-filter:blur(4px); }
+    .zoomModal img { max-width:90%; max-height:90%; border-radius:12px; box-shadow:0 0 22px #000000; }
+
+
+
+
+    /* ---------- ESTILO PROFISSIONAL PARA BOTÕES EM TODAS AS LISTAS ---------- */
+
+/* Formato base */
+
+.btnEdit,
+.btnDelete,
+.btnRebaixar,
+.btnWp {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    cursor: pointer;
+    transition: 0.25s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25) !important;
+    width: 130px;
+}
+
+
+
+/* Alinhamento dentro do card */
+.produto-card button {
+    margin-top: 8px;
+      width: 100%;
+      cursor: pointer;
+ 
+}
+
+.produto-card {
+    display: flex;
+    flex-direction: column;
+}
+
+    
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR - MENU VALITEC -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+      <img src="logo.png" alt="ValiTec" />
+      <h2>ValiTec</h2>
+  </div>
+  <nav class="sidebar-menu">
+      <a href="dashboard.html"><i class="ri-dashboard-line"></i> Dashboard</a>
+      <a href="produto.html"><i class="ri-price-tag-3-line"></i> Produtos</a>
+      <a href="Lista-produtos.html" class="active"><i class="ri-file-list-line"></i> Lista de Produtos</a>
+      <a href="Lista-rebaixados.html"><i class="ri-discount-percent-line"></i> Rebaixados</a>
+      <a href="calendario.html"><i class="ri-calendar-line"></i> Calendário</a>
+      <a href="perfil.html"><i class="ri-user-line"></i> Perfil</a>
+      <a href="cadastro-usuarios.html"><i class="ri-group-line"></i> Usuários</a>
+      <a href="relatorios.html"><i class="ri-bar-chart-line"></i> Relatórios</a>
+      <a href="#" class="logout" onclick="localStorage.clear(); location.href='index.html'"><i class="ri-logout-box-line"></i> Sair</a>
+  </nav>
+</aside>
+
+<!-- HEADER -->
+<header class="header">
+  <button class="menu-btn" onclick="toggleSidebar()"><i class="ri-menu-line"></i></button>
+  <h1 class="page-title">Lista de Produtos</h1>
+  <div class="header-user"><i class="ri-user-line"></i></div>
+</header>
+
+<section class="page">
+  <div id="barraLoja">
+    <strong>Loja atual: <span id="lojaAtualText">—</span></strong>
+    <select id="selectLojaInline" aria-label="Selecionar loja"></select>
+    <button id="btnVoltarPainel">Voltar ao Painel</button>
+  </div>
+
+  <input type="text" id="busca" class="input" placeholder="🔍 Buscar por nome, setor, código..." />
+
+  <div style="display:flex; gap:8px; margin:12px 0;">
+    <button id="exportTela" class="btn">Exportar Tela</button>
+    <button id="exportTudo" class="btn btn-outline">Exportar Tudo</button>
+  </div>
+
+  <div id="listaProdutos" class="lista-produtos"></div>
+</section>
+
+<script>
+function toggleSidebar() {
+  if (window.innerWidth <= 900) {
+    document.querySelector('.sidebar').classList.toggle('open');
+  }
+}
+
+// FUNÇÃO DE ZOOM DA IMAGEM
+function abrirZoom(src){
+  const modal = document.createElement('div');
+  modal.className = 'zoomModal';
+  modal.onclick = ()=> modal.remove();
+  const img = document.createElement('img');
+  img.src = src;
+  modal.appendChild(img);
+  document.body.appendChild(modal);
+}
+</script>
+
+<!-- FIREBASE + JS ORIGINAL (NÃO ALTERADO) -->
+
+<script type="module">
+  
+
+/* ================== IMPORTS ================== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import {
+  getFirestore, collection, getDocs, getDoc, doc,
+  updateDoc, deleteDoc, query, where, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+/* ================== FIREBASE ================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+  authDomain: "valitec-mj.firebaseapp.com",
+  projectId: "valitec-mj",
+  storageBucket: "valitec-mj.appspot.com",
+  messagingSenderId: "616592039657",
+  appId: "1:616592039657:web:3827a890474111be85da78"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+/* ================== PARSING URL ================== */
+const urlParams = new URLSearchParams(window.location.search);
+const lojaURL = urlParams.get("loja"); // pode ser null
+
+/* ================== VARIÁVEIS ================== */
+const lojasValidas = ["loja_cd_cidade","loja_cidade","loja_terranova","loja_manoa","loja_zumbi","loja_oswaldo","loja_mosaico"];
+const friendly = {
+  loja_cd_cidade: "CD Cidade",
+  loja_cidade: "Cidade Nova",
+  loja_terranova: "Terra Nova",
+  loja_manoa: "Manoa",
+  loja_zumbi: "Zumbi",
+  loja_oswaldo: "Oswaldo",
+  loja_mosaico: "Mosaico"
+};
+let loja = null;
+let cargo = null;
+let produtosCarregados = [];
+
+/* ================== UI ELEMENTS ================== */
+const selectInline = document.getElementById("selectLojaInline");
+const lojaAtualText = document.getElementById("lojaAtualText");
+const btnVoltarPainel = document.getElementById("btnVoltarPainel");
+
+/* montar select inline (sempre) */
+lojasValidas.forEach(l=>{
+  const o = document.createElement("option");
+  o.value = l;
+  o.textContent = friendly[l] || l;
+  selectInline.appendChild(o);
+});
+
+/* voltar para painel */
+btnVoltarPainel.onclick = ()=> window.location.href = "painel-rebaixa.html";
+
+/* trocar loja inline */
+selectInline.onchange = ()=>{
+  const nova = selectInline.value;
+  localStorage.setItem("lastSelectedLoja", nova);
+  // recarregar a página com o param
+  window.location.href = `Lista-produtos.html?loja=${encodeURIComponent(nova)}`;
+};
+
+/* ================== UTIL HELPERS ================== */
+async function getConfigDaLoja(lojaOverride) {
+  try {
+    const lojaToUse = lojaOverride || loja;
+    if (!lojaToUse) return null;
+    const snapCfg = await getDoc(doc(db, `lojas/${lojaToUse}/config/geral`));
+    if (!snapCfg.exists()) return { loja: lojaToUse, whatsGerente: "", whatsResponsavel: "" };
+    const cfg = snapCfg.data();
+    return { loja: lojaToUse, whatsGerente: cfg.whatsGerente || "", whatsResponsavel: cfg.whatsResponsavel || "" };
+  } catch (e) {
+    console.error("getConfigDaLoja erro:", e);
+    return null;
+  }
+}
+
+function abrirWhatsAppParaNumero(numero, texto) {
+  if (!numero) return;
+  const only = numero.replace(/\D/g, "");
+  const url = `https://wa.me/55${only}?text=${encodeURIComponent(texto)}`;
+  window.open(url, "_blank");
+}
+
+/* ================== REBAIXAR / REVERTER ================== */
+async function rebaixarProduto(id) {
+  try {
+    const cfg = await getConfigDaLoja(loja);
+    if (!cfg || !cfg.loja) return alert("Loja não identificada.");
+
+    const prodRef = doc(db, `lojas/${cfg.loja}/produtos/${id}`);
+    const prodSnap = await getDoc(prodRef);
+    if (!prodSnap.exists()) return alert("Produto não encontrado.");
+
+    const p = prodSnap.data();
+    if (p.status === "rebaixado") return alert("Produto já está rebaixado.");
+
+    await updateDoc(prodRef, {
+      status: "rebaixado",
+      rebaixadoAt: serverTimestamp(),
+      rebaixadoNotified: true,
+      lastAlertAt: serverTimestamp()
+    });
+
+    const texto = `🔻 PRODUTO REBAIXADO\nProduto: ${p.nome}\nCódigo: ${p.codigo}\nLote: ${p.lote}\nResponsável: ${localStorage.getItem("usuarioLogado") || "responsavel"}`;
+    abrirWhatsAppParaNumero(cfg.whatsGerente, texto);
+
+    await carregarProdutos();
+  } catch (err) {
+    console.error("Erro rebaixarProduto:", err);
+    alert("Erro ao rebaixar produto. Veja console.");
+  }
+}
+window.rebaixarProduto = rebaixarProduto;
+
+async function reverterRebaixado(id) {
+  try {
+    const cfg = await getConfigDaLoja(loja);
+    if (!cfg || !cfg.loja) return alert("Loja não identificada.");
+
+    const prodRef = doc(db, `lojas/${cfg.loja}/produtos/${id}`);
+    const prodSnap = await getDoc(prodRef);
+    if (!prodSnap.exists()) return alert("Produto não encontrado.");
+
+    const p = prodSnap.data();
+    if (p.status !== "rebaixado") return alert("Produto não está rebaixado.");
+
+    await updateDoc(prodRef, {
+      status: "normal",
+      rebaixadoNotified: false,
+      revertidoAt: serverTimestamp(),
+      revertidoNotified: true,
+      lastAlertAt: serverTimestamp()
+    });
+
+    const texto = `✅ REVERTIDO\nProduto: ${p.nome}\nCódigo: ${p.codigo}\nLote: ${p.lote}`;
+    abrirWhatsAppParaNumero(cfg.whatsGerente, texto);
+
+    await carregarProdutos();
+  } catch (err) {
+    console.error("Erro reverterRebaixado:", err);
+    alert("Erro ao reverter. Veja console.");
+  }
+}
+window.reverterRebaixado = reverterRebaixado;
+
+/* ================== VERIFICAR ALERTAS ================== */
+async function verificarAlertasDeValidade() {
+  try {
+    const cfg = await getConfigDaLoja(loja);
+    if (!cfg || !cfg.loja) return;
+
+    const ref = collection(db, `lojas/${cfg.loja}/produtos`);
+    const snap = await getDocs(ref);
+
+    for (const docSnap of snap.docs) {
+      const p = docSnap.data();
+      const id = docSnap.id;
+      if (!p.dataValidadeISO) continue;
+      if (p.status === "rebaixado") continue;
+
+      const validade = new Date(p.dataValidadeISO);
+      const hoje = new Date();
+      // calcula dias restantes sem mutar objetos
+      const diffMs = (new Date(validade.getFullYear(),validade.getMonth(),validade.getDate())) - (new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate()));
+      const dias = Math.ceil(diffMs / (1000*60*60*24));
+
+      let alertaCor = "normal";
+      if (dias <= 15 && dias > 10) alertaCor = "amarelo";
+      else if (dias <= 10 && dias > 5) alertaCor = "laranja";
+      else if (dias <= 5 && dias >= 0) alertaCor = "vermelho";
+      else if (dias < 0) alertaCor = "vencido";
+
+      if (p.alertaCor !== alertaCor) {
+        try { await updateDoc(doc(db, `lojas/${cfg.loja}/produtos/${id}`), { alertaCor }); } catch(e){ console.error(e); }
+      }
+
+      if (dias === 5 && !p.alert5diasSent) {
+        const texto = `⚠️ ALERTA DE VALIDADE\nProduto: ${p.nome}\nCódigo: ${p.codigo}\nLote: ${p.lote}\nVence em ${dias} dias`;
+        abrirWhatsAppParaNumero(cfg.whatsGerente, texto);
+        try { await updateDoc(doc(db, `lojas/${cfg.loja}/produtos/${id}`), { alert5diasSent: true, lastAlertAt: serverTimestamp() }); } catch(e){ console.error(e); }
+      }
+    }
+  } catch (err) {
+    console.error("Erro verificarAlertasDeValidade:", err);
+  }
+}
+
+/* ================== CARREGAR E EXIBIR ================== */
+async function carregarProdutos() {
+  try {
+    const user = auth.currentUser;
+    if (!user) return; // onAuthStateChanged trata redirecionamento
+
+    // buscar perfil do usuário
+    const userSnap = await getDoc(doc(db, "usuarios", user.email));
+    if (!userSnap.exists()) {
+      document.getElementById("listaProdutos").innerHTML = "<div class='produto-card'>Usuário sem perfil.</div>";
+      return;
+    }
+
+    const lojaUsuario = userSnap.data().loja;
+    cargo = userSnap.data().cargo || "gerente";
+
+    // 📌 1 — BLOQUEIO DE ACESSO
+    if (cargo !== "responsavel" && cargo !== "gerente" && cargo !== "master") {
+      alert("❌ Você não tem permissão para acessar esta página.");
+      return location.href = "dashboard.html";
+    }
+
+    // 📌 2 — DEFINIR LOJA
+    if (cargo === "responsavel") {
+      // Responsável pode trocar de loja (via URL ou lastSelectedLoja)
+      loja = lojasValidas.includes(lojaURL) ? lojaURL : (localStorage.getItem("lastSelectedLoja") || lojaUsuario);
+    } else {
+      // Gerente / master — sempre a loja fixa dele
+      loja = lojaUsuario;
+
+      if (lojaURL && lojaURL !== lojaUsuario) {
+        console.warn("URL ignorada para gerente/master.");
+      }
+
+      // Ocultar UI de troca de loja para quem não é responsável
+      const sel = document.getElementById("selectLojaInline");
+      const btn = document.getElementById("btnVoltarPainel");
+      if (sel) sel.style.display = "none";
+      if (btn) btn.style.display = "none";
+    }
+
+    // 📌 3 — Atualizar a UI
+    lojaAtualText.textContent = friendly[loja] || loja;
+    selectInline.value = loja;
+
+    // Query: carregar apenas produtos não rebaixados (melhora performance)
+    const q = query(collection(db, `lojas/${loja}/produtos`), where("status", "==", "normal"));
+    const snap = await getDocs(q);
+
+    produtosCarregados = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    exibirLista(produtosCarregados);
+  } catch (err) {
+    console.error("Erro carregarProdutos:", err);
+    document.getElementById("listaProdutos").innerHTML = "<div class='produto-card'>Erro ao carregar produtos. Veja console.</div>";
+  }
+}
+
+function exibirLista(listaProdutos) {
+  const lista = document.getElementById("listaProdutos");
+  lista.innerHTML = "";
+
+  if (!Array.isArray(listaProdutos) || listaProdutos.length === 0) {
+    lista.innerHTML = "<div class='produto-card'>Nenhum produto encontrado.</div>";
+    return;
+  }
+
+  listaProdutos.forEach(p => {
+    const item = document.createElement("div");
+    item.className = "produto-card";
+
+    const diff = p.dataValidadeISO ? Math.ceil((new Date(p.dataValidadeISO) - new Date()) / 86400000) : 0;
+    const cor = diff <= 5 ? "#ff4d4d" :
+                diff <= 10 ? "#ff9f43" :
+                diff <= 15 ? "#ffe66d" : "#ffffff";
+
+    item.innerHTML = `
+      <img src="${p.fotoURL}" 
+     style="width:70px;border-radius:6px;cursor:pointer;" 
+     onclick="abrirZoom('${p.fotoURL}')"
+     onerror="this.style.display='none'">
+      <div style="flex:1;">
+        <strong>${p.nome || "—"}</strong><br>
+        ${p.setor || ""}<br>
+        <span style="color:#4eff9a">💲 R$ ${(Number(p.preco) || 0).toFixed(2).replace('.', ',')}</span><br>
+        Validade: ${p.dataValidadeBR || ""}<br><span style="color:#ffd166">📦 Quantidade: ${p.quantidade ?? 0}</span>
+      </div>
+    `;
+
+    const botoes = document.createElement("div");
+    botoes.className = "botoes-container";
+
+    // WHATSAPP: tenta responsavel, se não existir usa gerente
+    const btnWhats = document.createElement("button");
+    btnWhats.textContent = "🟢 WhatsApp";
+    btnWhats.style.background = "#25D366";
+    btnWhats.style.padding = "6px";
+    btnWhats.style.borderRadius = "8px";
+    btnWhats.style.width = "100px";
+    btnWhats.onclick = async () => {
+      try {
+        const cfg = await getConfigDaLoja(loja);
+        const numero = cfg.whatsResponsavel || cfg.whatsGerente || "";
+        if (!numero) return alert("Número do responsável/gerente não configurado.");
+        const msg = `⚠️ Rebaixa solicitada\nProduto: ${p.nome || ""}\nValidade: ${p.dataValidadeBR || ""}`;
+        abrirWhatsAppParaNumero(numero, msg);
+      } catch (e) { console.error(e); alert("Erro ao buscar contato."); }
+    };
+    botoes.appendChild(btnWhats);
+
+    // REBAIXAR
+    const btnRebaixar = document.createElement("button");
+    btnRebaixar.style.background = cor;
+    btnRebaixar.textContent = `🔻 Rebaixar (${diff}d)`;
+    btnRebaixar.style.padding = "6px";
+    btnRebaixar.style.borderRadius = "8px";
+    btnRebaixar.style.width = "100px";
+    btnRebaixar.onclick = () => rebaixarProduto(p.id);
+    botoes.appendChild(btnRebaixar);
+
+    // EDITAR / EXCLUIR: somente se NÃO for responsável
+    if (cargo !== "responsavel") {
+      const btnEditar = document.createElement("button");
+      btnEditar.textContent = "✏️ Editar";
+      btnEditar.style.background = "#4d9cff";
+      btnEditar.style.padding = "6px";
+      btnEditar.style.borderRadius = "8px";
+       btnEditar.style.width = "100px";
+      btnEditar.onclick = () => location.href = `produto.html?id=${encodeURIComponent(p.id)}&loja=${encodeURIComponent(loja)}`;
+      botoes.appendChild(btnEditar);
+
+      const btnExcluir = document.createElement("button");
+      btnExcluir.textContent = "🗑️ Excluir";
+      btnExcluir.style.background = "#ff6b6b";
+      btnExcluir.style.padding = "6px";
+      btnExcluir.style.borderRadius = "8px";
+      btnExcluir.style.width = "100px";
+      btnExcluir.onclick = async () => {
+        if (!confirm(`Excluir ${p.nome || "produto"}?`)) return;
+        try {
+          await deleteDoc(doc(db, `lojas/${loja}/produtos/${p.id}`));
+          await carregarProdutos();
+        } catch (e) { console.error(e); alert("Erro ao excluir."); }
+      };
+      botoes.appendChild(btnExcluir);
+    }
+
+    item.appendChild(botoes);
+    lista.appendChild(item);
+  });
+}
+
+/* ================== FILTRO BUSCA ================== */
+document.getElementById("busca").addEventListener("input", e => {
+  const termo = e.target.value.toLowerCase();
+  const filtrados = produtosCarregados.filter(p =>
+    (p.nome || "").toLowerCase().includes(termo) ||
+    (p.setor || "").toLowerCase().includes(termo) ||
+    (p.codigo || "").toLowerCase().includes(termo)
+  );
+  exibirLista(filtrados);
+});
+
+/* ================== EXPORTAÇÃO ================== */
+function produtosParaLinhas(arr) {
+  return arr.map(p => ({
+    Nome: p.nome || "",
+    Codigo: p.codigo || "",
+    Lote: p.lote || "",
+    Setor: p.setor || "",
+    Preco: (Number(p.preco) || 0).toFixed(2).replace('.', ','),
+    Quantidade: p.quantidade ?? 0,
+    Validade: p.dataValidadeBR || "",
+    Status: p.status || "normal"
+  }));
+}
+
+async function exportToXLSX(rows, filename = "produtos.xlsx") {
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Produtos");
+  XLSX.writeFile(wb, filename);
+}
+async function exportToPDF(rows, filename = "produtos.pdf") {
+  try {
+    const { jsPDF } = window.jspdf;
+    const docPDF = new jsPDF('p', 'pt', 'a4');
+    const columns = Object.keys(rows[0] || {}).map(k => ({ header: k, dataKey: k }));
+    docPDF.autoTable({
+      head: [columns.map(c => c.header)],
+      body: rows.map(r => Object.values(r)),
+      startY: 40,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [0,200,255], textColor: 0 }
+    });
+    docPDF.save(filename);
+  } catch (e) {
+    console.error("Erro gerar PDF:", e);
+    alert("Erro ao gerar PDF. Veja console.");
+  }
+}
+
+document.getElementById("exportTela").onclick = async () => {
+  try {
+    const termo = document.getElementById("busca").value.toLowerCase();
+    const visiveis = produtosCarregados.filter(p =>
+      (p.nome || "").toLowerCase().includes(termo) ||
+      (p.setor || "").toLowerCase().includes(termo) ||
+      (p.codigo || "").toLowerCase().includes(termo)
+    );
+    if (visiveis.length === 0) return alert("Nenhum produto visível para exportar.");
+    const linhas = produtosParaLinhas(visiveis);
+    await exportToXLSX(linhas, `produtos_tela_${new Date().toISOString().slice(0,10)}.xlsx`);
+    await exportToPDF(linhas, `produtos_tela_${new Date().toISOString().slice(0,10)}.pdf`);
+  } catch (e) { console.error(e); alert("Erro ao exportar. Veja console."); }
+};
+
+document.getElementById("exportTudo").onclick = async () => {
+  try {
+    const cfg = await getConfigDaLoja(loja);
+    if (!cfg || !cfg.loja) return alert("Loja não identificada.");
+    const snap = await getDocs(collection(db, `lojas/${cfg.loja}/produtos`));
+    const todos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (todos.length === 0) return alert("Nenhum produto encontrado na loja.");
+    const linhas = produtosParaLinhas(todos);
+    await exportToXLSX(linhas, `produtos_tudo_${cfg.loja}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    await exportToPDF(linhas, `produtos_tudo_${cfg.loja}_${new Date().toISOString().slice(0,10)}.pdf`);
+  } catch (e) { console.error("Erro exportTudo:", e); alert("Erro ao exportar tudo. Veja console."); }
+};
+
+/* ================== INIT / AUTH ================== */
+onAuthStateChanged(auth, user => {
+  if (!user) return location.href = "index.html";
+  carregarProdutos().catch(console.error);
+  setTimeout(() => verificarAlertasDeValidade().catch(console.error), 1500);
+});
+
+/* ================== export para console (debug helpers) ================== */
+window._debug_lista = {
+  getCurrentLoja: () => loja,
+  getCargo: () => cargo,
+  getProdutosLoaded: () => produtosCarregados
+};
+</script>
+
+</body>
+</html>

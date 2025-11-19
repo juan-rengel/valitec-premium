@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ValiTec MJ — Relatórios Executivos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="theme.css">
+
+  <!-- Bibliotecas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+
+</head>
+
+<body class="relatorios-page">
+<canvas id="particleCanvas"></canvas>
+
+<div class="app-container">
+  <aside class="sidebar">
+    <h1></h1>
+    <nav>
+      <a href="dashboard.html">Painel</a>
+      <a href="produto.html">Cadastrar Produtos</a>
+      <a href="Lista-produtos.html">Lista de Produtos</a>
+      <a href="Lista-rebaixados.html">Produtos Rebaixados</a>
+      <a href="calendario.html">Calendário</a>
+      <a href="perfil.html">Perfil</a>
+      <a href="cadastro-usuarios.html">Usuários</a>
+      <a href="#" class="active">Relatórios</a>
+      <a href="#" onclick="localStorage.clear(); location.href='index.html'">Sair</a>
+    </nav>
+  </aside>
+
+  <main class="main fade-in" id="relatoriosContent">
+    <h2 class="page-title">📊 Relatórios Executivos</h2>
+
+    <!-- 🔍 FILTROS -->
+    <div class="filters">
+      <label>Loja:
+        <select id="filtroLoja">
+          <option value="todas">Todas</option>
+          <option value="loja_cd_cidade">CD Cidade</option>
+          <option value="loja_cidade">Nova Cidade</option>
+          <option value="loja_terranova">Terra Nova</option>
+          <option value="loja_manoa">Manoa</option>
+          <option value="loja_zumbi">Zumbi</option>
+          <option value="loja_oswaldo">Oswaldo Frota</option>
+          <option value="loja_mosaico">Mosaico</option>
+        </select>
+      </label>
+
+      <label>Setor:
+        <input type="text" id="filtroSetor" placeholder="Ex: Frios, Mercearia...">
+      </label>
+
+      <label>Período:
+        <input type="date" id="dataInicio"> —
+        <input type="date" id="dataFim">
+      </label>
+
+      <button class="export-btn" id="btnFiltrar">🔎 Aplicar Filtro</button>
+    </div>
+
+    <!-- 📈 RESUMO EXECUTIVO -->
+    <div class="resumo-container">
+      <div class="resumo-card">
+        <h3 id="resumoTotal">0</h3>
+        <p>Total de Produtos</p>
+      </div>
+      <div class="resumo-card">
+        <h3 id="resumoRebaixados">0</h3>
+        <p>Total de Rebaixados</p>
+      </div>
+      <div class="resumo-card">
+        <h3 id="resumoEficiencia">0%</h3>
+        <p>Média de Eficiência</p>
+      </div>
+      <div class="resumo-card">
+        <h3 id="resumoLojas">0</h3>
+        <p>Lojas Incluídas</p>
+      </div>
+    </div>
+
+    <!-- 🧭 EXPORTAÇÕES -->
+    <div class="export-btns">
+      <button class="export-btn" id="exportPDF">📄 Exportar Print</button>
+      <button class="export-btn" id="exportExcel">📊 Exportar Excel</button>
+    </div>
+
+    <!-- ======== GRÁFICOS ======== -->
+    <section class="card">
+      <h3>🏪 Comparativo entre Lojas</h3>
+      <canvas id="graficoComparativo" height="150"></canvas>
+    </section>
+
+    <section class="card">
+      <h3>📈 Eficiência (Válidos x Rebaixados)</h3>
+      <canvas id="graficoEficiencia" height="150"></canvas>
+    </section>
+
+    <section class="card">
+      <h3>🍕 Rebaixamentos por Setor</h3>
+      <canvas id="graficoSetores" height="180"></canvas>
+    </section>
+
+    <section class="card">
+      <h3>🏆 Ranking de Desempenho</h3>
+      <div id="rankingLojas"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ======= SCRIPTS ======= -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+  authDomain: "valitec-mj.firebaseapp.com",
+  projectId: "valitec-mj",
+  storageBucket: "valitec-mj.firebasestorage.app",
+  messagingSenderId: "616592039657",
+  appId: "1:616592039657:web:3827a890474111be85da78"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const lojas = [
+  "loja_cd_cidade","loja_cidade","loja_terranova","loja_manoa","loja_zumbi","loja_oswaldo","loja_mosaico"
+];
+
+let dadosGlobais = [];
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) gerarRelatorios();
+});
+
+document.getElementById("btnFiltrar").addEventListener("click", gerarRelatorios);
+
+async function gerarRelatorios() {
+  const lojaFiltro = document.getElementById("filtroLoja").value;
+  const setorFiltro = document.getElementById("filtroSetor").value.trim().toLowerCase();
+  const dataIni = document.getElementById("dataInicio").value;
+  const dataFim = document.getElementById("dataFim").value;
+
+  const resultados = [];
+  const lojasParaBuscar = lojaFiltro === "todas" ? lojas : [lojaFiltro];
+
+  for (const loja of lojasParaBuscar) {
+    const snap = await getDocs(collection(db, `lojas/${loja}/produtos`));
+    let total = 0, rebaixados = 0;
+    const setores = {};
+
+    snap.forEach(d => {
+      const p = d.data();
+      if (!p.dataValidadeISO) return;
+      if (dataIni && new Date(p.dataValidadeISO) < new Date(dataIni)) return;
+      if (dataFim && new Date(p.dataValidadeISO) > new Date(dataFim)) return;
+      if (setorFiltro && !p.setor?.toLowerCase().includes(setorFiltro)) return;
+      total++;
+      if (p.status === "rebaixado") rebaixados++;
+      setores[p.setor] = (setores[p.setor] || 0) + 1;
+    });
+
+    resultados.push({
+      nome: loja.replace("loja_", "").replaceAll("_", " ").toUpperCase(),
+      total, rebaixados,
+      eficiencia: total ? ((total - rebaixados) / total * 100).toFixed(1) : 0,
+      setores
+    });
+  }
+
+  dadosGlobais = resultados;
+  atualizarResumo(resultados);
+  criarGraficoComparativo(resultados);
+  criarGraficoEficiencia(resultados);
+  criarGraficoSetores(resultados);
+  criarRanking(resultados);
+}
+
+// 🧾 Atualiza os números do resumo
+function atualizarResumo(dados) {
+  const total = dados.reduce((a,b)=>a+b.total,0);
+  const rebaix = dados.reduce((a,b)=>a+b.rebaixados,0);
+  const media = dados.length ? (dados.reduce((a,b)=>a+parseFloat(b.eficiencia),0)/dados.length).toFixed(1) : 0;
+
+  document.getElementById("resumoTotal").textContent = total;
+  document.getElementById("resumoRebaixados").textContent = rebaix;
+  document.getElementById("resumoEficiencia").textContent = `${media}%`;
+  document.getElementById("resumoLojas").textContent = dados.length;
+}
+
+// ===== GRÁFICOS =====
+
+// Guardar instâncias dos gráficos atuais
+let graficoComparativoAtual = null;
+let graficoEficienciaAtual = null;
+let graficoSetoresAtual = null;
+
+function criarGraficoComparativo(dados) {
+  const ctx = document.getElementById("graficoComparativo").getContext("2d");
+
+  // 🔄 Destroi gráfico anterior se existir
+  if (graficoComparativoAtual) graficoComparativoAtual.destroy();
+
+  graficoComparativoAtual = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: dados.map(x => x.nome),
+      datasets: [{
+        label: "Produtos Totais",
+        data: dados.map(x => x.total),
+        backgroundColor: "rgba(0,200,255,0.6)",
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: "#0a0f1f", titleColor: "#00c8ff", bodyColor: "#fff" }
+      },
+      scales: {
+        x: { ticks: { color: "#9fdfff" } },
+        y: { ticks: { color: "#9fdfff" } }
+      }
+    }
+  });
+}
+
+function criarGraficoEficiencia(dados) {
+  const ctx = document.getElementById("graficoEficiencia").getContext("2d");
+
+  if (graficoEficienciaAtual) graficoEficienciaAtual.destroy();
+
+  graficoEficienciaAtual = new Chart(ctx, {
+    type: "radar",
+    data: {
+      labels: dados.map(x => x.nome),
+      datasets: [{
+        label: "Eficiência (%)",
+        data: dados.map(x => x.eficiencia),
+        borderColor: "#4eff9a",
+        backgroundColor: "rgba(78,255,154,0.25)",
+        borderWidth: 2,
+        pointBackgroundColor: "#4eff9a"
+      }]
+    },
+    options: {
+      scales: { r: { angleLines: { color: "#1a253b" }, grid: { color: "#2c3a55" }, pointLabels: { color: "#9fdfff" } } },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function criarGraficoSetores(dados) {
+  const ctx = document.getElementById("graficoSetores").getContext("2d");
+
+  if (graficoSetoresAtual) graficoSetoresAtual.destroy();
+
+  const todosSetores = {};
+  dados.forEach(x => Object.entries(x.setores).forEach(([setor, qnt]) => {
+    todosSetores[setor] = (todosSetores[setor] || 0) + qnt;
+  }));
+
+  graficoSetoresAtual = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels: Object.keys(todosSetores),
+      datasets: [{
+        data: Object.values(todosSetores),
+        backgroundColor: ["#4eff9a","#00c8ff","#ffe66d","#ff9f43","#ff4d4d","#b86bff","#6ac7ff","#ff94f3"]
+      }]
+    },
+    options: {
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: { color: "#fff" }
+        }
+      }
+    }
+  });
+}
+
+function criarRanking(dados) {
+  const container = document.getElementById("rankingLojas");
+  container.innerHTML = "";
+
+  dados.sort((a, b) => b.eficiencia - a.eficiencia);
+
+  dados.forEach((d, i) => {
+    const cor = i === 0 ? "#ffd700" : i === 1 ? "#c0c0c0" : i === 2 ? "#cd7f32" : "#4eff9a";
+    const item = document.createElement("div");
+    item.className = "ranking-item";
+    item.innerHTML = `
+      <strong>${i + 1}º</strong> ${d.nome} — 
+      <span style="color:${cor}">${d.eficiencia}%</span> 
+      (${d.total - d.rebaixados}/${d.total} válidos)
+    `;
+    container.appendChild(item);
+  });
+}
+
+
+// ===== EXPORTAÇÕES =====
+// ===== EXPORTAÇÃO PDF OTIMIZADA =====
+document.getElementById("exportPDF").onclick = async () => {
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF("p", "pt", "a4");
+    const content = document.getElementById("relatoriosContent");
+
+    // 🧠 Otimização para canvases complexos
+    const canvas = await html2canvas(content, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#0a0f1f",
+      logging: false,
+      onclone: (doc) => {
+        // Aplica o atributo willReadFrequently em todos os canvases
+        doc.querySelectorAll("canvas").forEach(cnv => {
+          const ctx = cnv.getContext("2d", { willReadFrequently: true });
+          if (ctx) {
+            // apenas força o navegador a entender o uso frequente
+          }
+        });
+      }
+    });
+
+    // 🖼 Converte para imagem e adiciona ao PDF
+    const img = canvas.toDataURL("image/png", 1.0);
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = (canvas.height * pageWidth) / canvas.width;
+
+    pdf.addImage(img, "PNG", 20, 20, pageWidth - 40, pageHeight);
+    pdf.save(`Relatorio_ValiTec_${new Date().toLocaleDateString()}.pdf`);
+
+  } catch (error) {
+    console.error("Erro ao gerar PDF:", error);
+    alert("❌ Ocorreu um erro ao exportar o PDF.");
+  }
+};
+document.getElementById("exportExcel").onclick=()=>{if(!dadosGlobais.length)return alert("Carregando...");const rows=[["Loja","Total","Rebaixados","Eficiência (%)"]];dadosGlobais.forEach(x=>rows.push([x.nome,x.total,x.rebaixados,x.eficiencia]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Relatório");XLSX.writeFile(wb,`Relatorio_ValiTec_${new Date().toLocaleDateString()}.xlsx`);}
+</script>
+
+<!-- Fundo animado -->
+<script>
+const c=document.getElementById("particleCanvas"),x=c.getContext("2d");let p=[];let w,h;
+function resize(){w=c.width=innerWidth;h=c.height=innerHeight;}addEventListener("resize",resize);resize();
+for(let i=0;i<60;i++){p.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*2+1,dx:(Math.random()-.5)*.4,dy:(Math.random()-.5)*.4});}
+function draw(){x.clearRect(0,0,w,h);x.fillStyle="rgba(0,200,255,.35)";p.forEach(a=>{x.beginPath();x.arc(a.x,a.y,a.r,0,Math.PI*2);x.fill();a.x+=a.dx;a.y+=a.dy;if(a.x<0||a.x>w)a.dx*=-1;if(a.y<0||a.y>h)a.dy*=-1;});requestAnimationFrame(draw);}draw();
+</script>
+
+<script>
+// --- Menu Hambúrguer --- //
+const sidebar = document.querySelector('.sidebar');
+const hamburger = document.createElement('button');
+hamburger.className = 'hamburger';
+hamburger.textContent = '☰';
+hamburger.onclick = () => sidebar.classList.toggle('open');
+document.body.appendChild(hamburger);
+</script>
+<button id="toggleTheme" class="theme-toggle">🌙</button>
+<script>
+const toggle = document.getElementById("toggleTheme");
+
+function aplicarTema() {
+  const tema = localStorage.getItem("temaValitec") || "dark";
+  if (tema === "light") {
+    document.documentElement.classList.add("light-mode");
+    toggle.textContent = "🌙";
+  } else {
+    document.documentElement.classList.remove("light-mode");
+    toggle.textContent = "🔆";
+  }
+}
+
+toggle.onclick = () => {
+  const atual = localStorage.getItem("temaValitec") || "dark";
+  const novo = (atual === "dark") ? "light" : "dark";
+  localStorage.setItem("temaValitec", novo);
+  aplicarTema();
+};
+
+aplicarTema();
+</script>
+
+
+
+</body>
+</html>

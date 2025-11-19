@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ValiTec MJ — Calendário</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+
+  <style>
+    .calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin-top:20px; }
+    .calendar-head { opacity:.6; font-weight:700; }
+    .dia-calendario { padding:14px; border-radius:10px; display:flex; align-items:flex-start; justify-content:flex-start; font-weight:700; cursor:pointer; min-height:70px; }
+
+    .modal.hidden{ display:none; }
+    .modal{ position:fixed; inset:0; backdrop-filter:blur(4px); background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:9999; }
+    .modal-content{ background:var(--bg-card); padding:20px; border-radius:14px; width:95%; max-width:680px; box-shadow:var(--shadow); }
+    .produto-card{ padding:10px; border-bottom:1px solid rgba(255,255,255,0.06); }
+
+    .header { background:var(--bg-card); padding:14px; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; box-shadow:var(--shadow); margin-bottom:20px; }
+    .btn-switch { background:transparent; border:none; color:var(--text); font-size:22px; cursor:pointer; padding:4px; }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+      <img src="logo.png" alt="ValiTec" />
+      <h2>ValiTec</h2>
+  </div>
+  <nav class="sidebar-menu">
+      <a href="dashboard.html"><i class="ri-dashboard-line"></i> Dashboard</a>
+      <a href="produto.html"><i class="ri-price-tag-3-line"></i> Cadastrar Produto</a>
+      <a href="Lista-produtos.html"><i class="ri-file-list-line"></i> Lista de Produtos</a>
+      <a href="Lista-rebaixados.html"><i class="ri-discount-percent-line"></i> Rebaixados</a>
+      <a href="#" class="active"><i class="ri-calendar-line"></i> Calendário</a>
+      <a href="perfil.html"><i class="ri-user-line"></i> Perfil</a>
+      <a href="cadastro-usuarios.html"><i class="ri-group-line"></i> Usuários</a>
+      <a href="relatorios.html"><i class="ri-bar-chart-line"></i> Relatórios</a>
+      <a href="#" onclick="localStorage.clear(); location.href='index.html'" class="logout"><i class="ri-logout-box-line"></i> Sair</a>
+  </nav>
+</aside>
+
+<header class="header">
+  <button class="menu-btn" onclick="toggleSidebar()"><i class="ri-menu-line"></i></button>
+  <h1>Calendário de Validades</h1>
+  <div></div>
+</header>
+
+<section class="page">
+
+  <!-- BARRA DE LOJA -->
+  <div id="barraLoja" style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+    <strong>Loja atual: <span id="lojaAtualText">—</span></strong>
+    <select id="selectLojaInline" class="input"></select>
+    <button id="btnVoltarPainel" class="btn-outline">Voltar</button>
+  </div>
+
+  <!-- CONTROLE DO MÊS -->
+  <h2 style="display:flex; align-items:center; gap:10px;">
+    <button id="prevMes" class="btn-switch">⟵</button>
+    <span id="mesTitulo">Mês Atual</span>
+    <button id="nextMes" class="btn-switch">⟶</button>
+  </h2>
+
+  <!-- DIAS DA SEMANA -->
+  <div class="calendar-grid calendar-head">
+    <div>D</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>S</div>
+  </div>
+
+  <!-- CALENDÁRIO -->
+  <div id="calendarContainer" class="calendar-grid"></div>
+
+</section>
+
+<!-- MODAL -->
+<div id="modal" class="modal hidden">
+  <div class="modal-content">
+    <span id="fecharModal" style="cursor:pointer;float:right;font-size:18px;">✖</span>
+    <h3 id="modalTitulo">Produtos do dia</h3>
+    <div id="modalLista"></div>
+  </div>
+</div>
+
+<script>
+function toggleSidebar() {
+  if (window.innerWidth <= 900) {
+    document.querySelector('.sidebar').classList.toggle('open');
+  }
+}
+</script>
+
+<!-- JS ORIGINAL FIREBASE (100% mantido) -->
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, getDocs, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDPIlkTLbaeUiuvfvijWf5fofREw5oE8ic",
+  authDomain: "valitec-mj.firebaseapp.com",
+  projectId: "valitec-mj",
+  storageBucket: "valitec-mj.firebasestorage.app",
+  messagingSenderId: "616592039657",
+  appId: "1:616592039657:web:3827a890474111be85da78"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+/* LOJAS e UI */
+const lojasValidas = ["loja_cd_cidade","loja_cidade","loja_terranova","loja_manoa","loja_zumbi","loja_oswaldo","loja_mosaico"];
+const friendly = {
+  loja_cd_cidade: "CD Cidade", loja_cidade: "Cidade Nova",
+  loja_terranova: "Terra Nova", loja_manoa: "Manoa",
+  loja_zumbi: "Zumbi", loja_oswaldo: "Oswaldo",
+  loja_mosaico: "Mosaico"
+};
+const urlParams = new URLSearchParams(window.location.search);
+const lojaURL = urlParams.get("loja");
+
+const calendarContainer = document.getElementById("calendarContainer");
+const modal = document.getElementById("modal");
+const modalLista = document.getElementById("modalLista");
+const modalFechar = document.getElementById("fecharModal");
+const selectInline = document.getElementById("selectLojaInline");
+const lojaAtualText = document.getElementById("lojaAtualText");
+const btnVoltar = document.getElementById("btnVoltarPainel");
+
+modalFechar.onclick = () => modal.classList.add("hidden");
+window.onclick = e => { if (e.target === modal) modal.classList.add("hidden"); };
+
+function diasNoMes(ano, mes) {
+  return new Date(ano, mes + 1, 0).getDate();
+}
+
+window.dataRef = new Date();
+
+/* === FUNÇÕES ROBUSTAS DE PARSING / NORMALIZAÇÃO ===
+   - parseToLocalDate: aceita Firestore Timestamp (obj com toDate),
+     ISO date string with time, ISO date without time, or dd/mm/yyyy,
+     e retorna um Date no fuso local com horas zeradas.
+*/
+function parseToLocalDate(value) {
+  if (!value) return null;
+
+  // Firestore Timestamp-like (has toDate)
+  if (typeof value === "object" && typeof value.toDate === "function") {
+    const d = value.toDate();
+    d.setHours(0,0,0,0);
+    return d;
+  }
+
+  // Se for Date já
+  if (value instanceof Date) {
+    const d = new Date(value.getTime());
+    d.setHours(0,0,0,0);
+    return d;
+  }
+
+  // Se for string
+  if (typeof value === "string") {
+    // dd/mm/yyyy
+    if (value.includes("/")) {
+      const parts = value.split("/");
+      if (parts.length >= 3) {
+        const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        d.setHours(0,0,0,0);
+        return d;
+      }
+    }
+
+    // yyyy-mm-dd or yyyy-mm-ddTHH:MM:SSZ
+    const m = value.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+      const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      d.setHours(0,0,0,0);
+      return d;
+    }
+
+    // try fallback to Date parsing but normalize (last resort)
+    const fallback = new Date(value);
+    if (!isNaN(fallback)) {
+      fallback.setHours(0,0,0,0);
+      return fallback;
+    }
+  }
+
+  return null;
+}
+
+/* Normaliza um Date para meia-noite local (novo objeto) */
+function normalizeToLocalMidnight(d) {
+  if (!d) return null;
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setHours(0,0,0,0);
+  return x;
+}
+
+/* montar select de lojas */
+lojasValidas.forEach(l => {
+  const op = document.createElement("option");
+  op.value = l;
+  op.textContent = friendly[l] || l;
+  selectInline.appendChild(op);
+});
+
+btnVoltar.onclick = () => { window.location.href = "painel-rebaixa.html"; };
+
+/* ================== CARREGAR CALENDÁRIO (com seleção de loja e permissões) ================== */
+let loja = null;
+let cargo = null;
+let produtosSnapCache = null; // cache do snapshot para evitar re-query em navegação no mês
+
+async function carregarCalendario() {
+  const user = auth.currentUser;
+  if (!user) return location.href = "index.html";
+
+  const userSnap = await getDoc(doc(db, "usuarios", user.email));
+  if (!userSnap.exists()) {
+    alert("Erro ao carregar usuário.");
+    return location.href = "index.html";
+  }
+
+  cargo = userSnap.data().cargo || "gerente";
+  const lojaUser = userSnap.data().loja;
+
+  // BLOQUEIO DE ACESSO: somente responsavel/gerente/master
+  if (cargo !== "responsavel" && cargo !== "gerente" && cargo !== "master") {
+    alert("❌ Você não tem permissão para acessar esta área.");
+    return location.href = "dashboard.html";
+  }
+
+  // DEFINIR LOJA atual (responsavel pode trocar)
+  if (cargo === "responsavel") {
+    loja = lojasValidas.includes(lojaURL) ? lojaURL : (localStorage.getItem("lastSelectedLoja") || lojaUser);
+    selectInline.style.display = "inline-block";
+    // valor do select
+    selectInline.value = loja;
+    selectInline.onchange = () => {
+      const nova = selectInline.value;
+      localStorage.setItem("lastSelectedLoja", nova);
+      // recarrega a página com o param ?loja=
+      const params = new URLSearchParams(window.location.search);
+      params.set("loja", nova);
+      window.location.search = params.toString();
+    };
+  } else {
+    loja = lojaUser;
+    // esconder seletor para gerentes/master
+    selectInline.style.display = "none";
+    btnVoltar.style.display = "none";
+    if (lojaURL && lojaURL !== lojaUser) console.warn("Parametro ?loja= ignorado para este cargo.");
+  }
+
+  lojaAtualText.textContent = friendly[loja] || loja;
+
+  // Pega produtos da loja (cache temporário)
+  const colRef = collection(db, `lojas/${loja}/produtos`);
+  const snap = await getDocs(colRef);
+  produtosSnapCache = snap; // guarda para uso no mês atual
+  renderCalendarioComSnapshot(snap);
+}
+
+/* render baseado no snapshot passado (mantém seu código de cores/parse) */
+function renderCalendarioComSnapshot(snap) {
+  // normalize 'hoje' para meia-noite local para evitar diferença por hora
+  const hoje = normalizeToLocalMidnight(new Date());
+
+  const ano = dataRef.getFullYear();
+  const mes = dataRef.getMonth();
+  const totalDias = diasNoMes(ano, mes);
+
+  document.getElementById("mesTitulo").textContent =
+    dataRef.toLocaleDateString("pt-BR", { month:'long', year:'numeric' });
+
+  calendarContainer.innerHTML = "";
+
+  // Alinhamento do calendário (dias vazios antes do 1º dia)
+  const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+  for (let i = 0; i < primeiroDiaSemana; i++) {
+    const vazio = document.createElement("div");
+    vazio.className = "dia-calendario";
+    vazio.style.background = "transparent";
+    vazio.style.border = "none";
+    vazio.style.cursor = "default";
+    vazio.textContent = "";
+    calendarContainer.appendChild(vazio);
+  }
+
+  for (let dia = 1; dia <= totalDias; dia++) {
+    const dataAtual = new Date(ano, mes, dia);
+    // normaliza para meia-noite local (mesmo formato que parseToLocalDate retorna)
+    const dataAtualNorm = normalizeToLocalMidnight(dataAtual);
+
+    const produtosDoDia = [];
+
+    snap.forEach(docItem => {
+      const p = docItem.data();
+      if (!p.dataValidadeISO) return;
+      if (p.status === "rebaixado") return; // não mostra rebaixado
+
+      // PARSE SEGURO e NORMALIZADO
+      const venc = parseToLocalDate(p.dataValidadeISO);
+      if (!venc) return;
+
+      // comparação de datas sem horas
+      if (venc.getTime() === dataAtualNorm.getTime()) {
+        produtosDoDia.push(p);
+      }
+    });
+
+    // Cria o quadrado do dia
+    const cell = document.createElement("div");
+    cell.className = "dia-calendario";
+    cell.textContent = dia;
+
+    // Cor padrão
+    let cor = "rgba(0,200,255,0.25)";
+
+    // Aplica lógica das cores (baseada na diferença de dias entre venc e hoje)
+    produtosDoDia.forEach(p => {
+      const venc = parseToLocalDate(p.dataValidadeISO);
+      if (!venc) return;
+      // diferença em dias (venc - hoje)
+      const diff = Math.ceil((venc.getTime() - hoje.getTime()) / 86400000);
+
+      if (diff < 0 || diff === 0) cor = "#c90000cc";   // vencido ou hoje
+      else if (diff <= 5)  cor = "#ff3b47";            // vermelho
+      else if (diff <= 10) cor = "#ff7a29";            // laranja
+      else if (diff <= 15) cor = "#ffe66d";            // amarelo
+      else if (diff > 16) cor = "#b9b9b975";            // amarelo
+    });
+
+    // Preenche quadrado inteiro
+    cell.style.background = cor;
+    cell.style.border = "none";
+
+    // Ajuste de cor do texto (mantive sua lógica original, ajustei comparações)
+    const darkTextColors = ["#ffe66d", "#ff7a29"]; // amarelo e laranja -> texto escuro
+    cell.style.color = darkTextColors.includes(cor) ? "#000" : "#fff";
+
+    // Clicar abre modal se houver produtos
+    if (produtosDoDia.length > 0) {
+      cell.style.cursor = "pointer";
+      cell.onclick = () => abrirModal(produtosDoDia);
+    }
+
+    calendarContainer.appendChild(cell);
+  }
+}
+
+function abrirModal(lista) {
+  modalLista.innerHTML = "";
+  lista.forEach(p => {
+    const item = document.createElement("div");
+    item.className = "produto-card";
+    item.innerHTML = `
+  <strong>${p.nome}</strong><br>
+  ${p.setor || ""}<br>
+  Lote: ${p.lote || ""}<br>
+  Validade: ${p.dataValidadeBR || p.dataValidadeISO || ""}<br>
+  ${p.status === "rebaixado" ? "<span style='color:#4eff9a;font-weight:bold;'>✅ REBAIXADO</span>" : ""}
+`;
+    modalLista.appendChild(item);
+  });
+  modal.classList.remove("hidden");
+}
+
+document.getElementById("prevMes").onclick = () => { dataRef.setMonth(dataRef.getMonth()-1); if(produtosSnapCache) renderCalendarioComSnapshot(produtosSnapCache); else carregarCalendario(); };
+document.getElementById("nextMes").onclick = () => { dataRef.setMonth(dataRef.getMonth()+1); if(produtosSnapCache) renderCalendarioComSnapshot(produtosSnapCache); else carregarCalendario(); };
+
+/* START AUTH */
+onAuthStateChanged(auth, user => {
+  if (!user) return location.href = "index.html";
+  carregarCalendario().catch(err => {
+    console.error("Erro carregarCalendario:", err);
+    // fallback exibe mensagem simples
+    calendarContainer.innerHTML = "<div style='padding:12px;'>Erro ao carregar calendário. Veja console.</div>";
+  });
+});
+</script>
+
+
+</body>
+</html>
