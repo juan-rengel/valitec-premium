@@ -682,16 +682,12 @@ canvas { width:100% !important; height:auto !important; display:block; max-width
 
 
 /* === FIXED SIDEBAR LOGIC (DESKTOP ALWAYS OPEN, MOBILE TOGGLE) === */
-@media (min-width: 900px) {
-    .sidebar {
-        left: 0;
-    }
-    .page {
-        margin-left: 260px;
-    }
+@media (min-width: 901px) {
+    .sidebar { left: 0 !important; }
+    .page { margin-left: 260px !important; }
 }
 @media (max-width: 900px) {
-    .sidebar { left: -260px; }
-    .sidebar.open { left: 0; }
-    .page { margin-left: 0; }
+    .sidebar { left: -260px !important; }
+    .sidebar.open { left: 0 !important; }
+    .page { margin-left: 0 !important; }
 }
