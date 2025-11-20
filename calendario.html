@@ -19,7 +19,9 @@
     .modal-content{ background:var(--bg-card); padding:20px; border-radius:14px; width:95%; max-width:680px; box-shadow:var(--shadow); }
     .produto-card{ padding:10px; border-bottom:1px solid rgba(255,255,255,0.06); }
 
-    .header { background:var(--bg-card); padding:14px; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; box-shadow:var(--shadow); margin-bottom:20px; }
+ 
+
+
     .btn-switch { background:transparent; border:none; color:var(--text); font-size:22px; cursor:pointer; padding:4px; }
   </style>
 </head>
@@ -44,11 +46,10 @@
 </aside>
 
 <header class="header">
-  <button class="menu-btn" onclick="toggleSidebar()"><i class="ri-menu-line"></i></button>
-  <h1>Calendário de Validades</h1>
-  <div></div>
-</header>
+  <h1 class="page-title">Calendário</h1>
 
+</header>
+ 
 <section class="page">
 
   <!-- BARRA DE LOJA -->
@@ -384,6 +385,16 @@ onAuthStateChanged(auth, user => {
   });
 });
 </script>
+
+<script>
+const sidebar = document.querySelector('.sidebar');
+const hamburger = document.createElement('button');
+hamburger.className = 'hamburger';
+hamburger.textContent = '☰';
+hamburger.onclick = () => sidebar.classList.toggle('open');
+document.body.appendChild(hamburger);
+</script>
+
 
 
 </body>
