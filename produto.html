@@ -35,6 +35,34 @@
     .zoomModal img { max-height: 90%; max-width: 90%; border-radius: 12px; box-shadow: 0 0 20px #000; }
 
 
+    /* Área da foto */
+.foto-area {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Preview da foto capturada */
+#previewFoto {
+  width: 100%;
+  max-width: 260px;       /* 🔥 tamanho perfeito */
+  height: auto;
+  display: none;          /* começa escondido */
+  border-radius: 12px;
+  object-fit: cover;
+  background: #000;
+  margin-top: 10px;
+}
+
+/* Preview da câmera */
+#cameraPreview {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  display: none;
+  border-radius: 12px;
+  background: #000;
+}
 
   </style>
 </head>
@@ -309,17 +337,25 @@ if(btnOpenCamera) btnOpenCamera.onclick = async ()=>{
 
 if(btnCapturar) btnCapturar.onclick = async ()=>{
   await new Promise(r=>setTimeout(r,700));
-  if(!cameraPreview.videoWidth){ alert("Câmera carregando, tente novamente."); return; }
+  if(!cameraPreview.videoWidth)
+  { alert("Câmera carregando, tente novamente."); 
+  return; 
+}
 
   const canvas = document.createElement("canvas");
   canvas.width = cameraPreview.videoWidth;
   canvas.height = cameraPreview.videoHeight;
+
   const ctx = canvas.getContext("2d");
   ctx.drawImage(cameraPreview,0,0);
+
   const dataURL = canvas.toDataURL("image/jpeg",0.9);
 
   previewEl.src = dataURL;
   previewEl.style.display = "block";
+  
+    // 🔥 Ocultar câmera após capturar
+  cameraPreview.style.display = "none";
 
   fotoBlob = await (await fetch(dataURL)).blob();
 };
