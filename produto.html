@@ -491,7 +491,7 @@ document.getElementById("btnSalvar").onclick = async ()=>{
       status: "normal",
       alertaCor: "normal",
       alert5diasSent: false,
-      criadoEm: produtoId ? undefined : new Date(),
+      ...(produtoId ? {} : { criadoEm: new Date() }),
       atualizadoEm: new Date()
     }, { merge: true });
 
