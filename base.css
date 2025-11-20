@@ -706,3 +706,50 @@ canvas { width:100% !important; height:auto !important; display:block; max-width
   .main{padding-top:80px}
 }
 
+
+
+
+
+
+.form-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 15px;
+  justify-content: center;
+}
+
+.btn-main {
+  background: linear-gradient(90deg, #00d2ff, #0095ff);
+  color: #fff;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  max-width: 180px;
+  text-align: center;
+}
+
+.btn-main:hover {
+  opacity: 0.8;
+}
+
+.btn-outline {
+  border: 2px solid #00c2ff;
+  color: #00c2ff;
+  background: transparent;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  max-width: 180px;
+  text-align: center;
+}
+
+.btn-outline:hover {
+  background: rgba(0,194,255,0.1);
+}
