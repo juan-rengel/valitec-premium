@@ -7,9 +7,244 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="base.css">
 
-  <!-- ======= Correções de responsividade específicas para o campo "Usuários Cadastrados" ======= -->
-  
-  <!-- ========================================================================================== -->
+<style>
+
+/* ===========================
+   ESTILO EXCLUSIVO — CADASTRO DE USUÁRIOS
+   =========================== */
+
+/* CONTAINER PRINCIPAL */
+.main {
+    max-width: 1100px;
+    margin: 80px auto 40px auto;
+    padding: 10px;
+}
+
+/* ===========================
+   FORMULÁRIO DE CADASTRO
+   =========================== */
+
+#formUser {
+    background: var(--bg-card);
+    padding: 10px;
+    border-radius: 16px;
+    box-shadow: 0 0 20px rgba(0,200,255,0.12);
+    border: 1px solid rgba(0,200,255,0.15);
+    max-width: 400px;
+    width: 100%;
+    margin: 0 auto 35px auto;
+}
+
+#formUser label {
+    color: var(--primary);
+    font-size: 14px;
+    margin-bottom: 4px;
+    display: block;
+}
+
+#formUser input,
+#formUser select {
+    background: #0b1f33;
+    border: 1px solid #0e2d4e;
+    color: var(--text);
+    padding: 12px;
+    border-radius: 10px;
+    width: 100%;
+    margin-bottom: 14px;
+    font-size: 15px;
+}
+
+#formUser input:focus,
+#formUser select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 8px var(--primary-glow);
+}
+
+/* Botão Criar Usuário */
+#formUser .btnSalvar {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(90deg, #00d2ff, #007bff);
+    color: #001;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 14px rgba(0,200,255,0.35);
+}
+
+#formUser .btnSalvar:hover {
+    transform: scale(1.04);
+    filter: brightness(1.1);
+}
+
+
+/* ===========================
+   LISTA DE USUÁRIOS
+   =========================== */
+
+.usuarios-box {
+    margin-top: 45px;
+    background: var(--bg-card);
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 0 20px rgba(0,200,255,0.12);
+    border: 1px solid rgba(0,200,255,0.15);
+    max-width: 800px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.table-container {
+    overflow-x: auto;
+    margin-top: 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+#tabelaUsuarios {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 400px;
+}
+
+#tabelaUsuarios thead {
+    background: #0e2137;
+}
+
+#tabelaUsuarios th {
+    padding: 12px 10px;
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 14px;
+    text-align: left;
+}
+
+#tabelaUsuarios td {
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: var(--text-muted);
+}
+
+#tabelaUsuarios tbody tr:hover td {
+    background: #0f1e34;
+    color: var(--text);
+    transition: .2s;
+}
+
+/* Botões editar / excluir */
+#tabelaUsuarios button {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    margin-right: 6px;
+}
+
+#tabelaUsuarios button:nth-child(1) {
+    background: #4d9cff;
+    color: white;
+}
+
+#tabelaUsuarios button:nth-child(2) {
+    background: #ff6b6b;
+    color: white;
+}
+
+/* ===========================
+   MODAL DE EDIÇÃO
+   =========================== */
+
+#modalEditar > div {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--primary-glow);
+    width: 330px !important;
+    color: var(--text);
+    box-shadow: 0 0 20px rgba(0,200,255,0.2);
+}
+
+#modalEditar label {
+    color: var(--primary);
+}
+
+#modalEditar input,
+#modalEditar select {
+    background: #0b1f33 !important;
+    border: 1px solid #0e2d4e !important;
+    color: var(--text) !important;
+}
+
+#modalEditar button {
+    padding: 10px 14px !important;
+    border-radius: 10px !important;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+#modalEditar button:first-of-type {
+    background: #00aaff;
+    color: white;
+}
+
+#modalEditar button:last-of-type {
+    background: #ff6b6b;
+    color: white;
+}
+
+/* ===========================
+   MOBILE
+   =========================== */
+
+@media (max-width: 900px) {
+
+    .main {
+        margin-top: 100px !important;
+        padding-left: 10px;
+        padding-right: 10px;
+        
+    }
+
+    #formUser {
+        padding: 18px !important;
+    }
+
+    .usuarios-box {
+        padding: 18px !important;
+        margin-top: 30px !important;
+    }
+
+    .table-container {
+        overflow: auto;
+    }
+
+    
+}
+
+@media (max-width: 600px) {
+    .usuarios-box {
+    margin-top: 45px;
+    padding: 20px;
+    max-width: 400px;
+
+}
+    }
+
+/* NÃO DEIXAR A SIDEBAR EMPURRAR O CONTEÚDO */
+.sidebar {
+    margin-top: 0 !important;
+}
+
+.hamburger {
+    top: 15px !important;
+}
+
+</style>
+
+
 </head>
 <body>
 
