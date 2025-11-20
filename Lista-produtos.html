@@ -72,6 +72,40 @@
     flex-direction: column;
 }
 
+
+
+
+
+
+/* GRID PARA OS 4 BOTÕES */
+.botoes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ESTILO GERAL DOS BOTÕES */
+.botoes-grid button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* CORES INDIVIDUAIS */
+.btn-whats { background:#25D366; color:#fff; }
+.btn-rebaixar { background:#FFA500; color:#fff; }
+.btn-edit { background:#4da3ff; color:#fff; }
+.btn-del { background:#ff4d4d; color:#fff; }
+
+
     
   </style>
 </head>
@@ -423,15 +457,14 @@ function exibirLista(listaProdutos) {
     `;
 
     const botoes = document.createElement("div");
-    botoes.className = "botoes-container";
+botoes.className = "botoes-grid";
 
     // WHATSAPP: tenta responsavel, se não existir usa gerente
     const btnWhats = document.createElement("button");
     btnWhats.textContent = "🟢 WhatsApp";
-    btnWhats.style.background = "#25D366";
+    btnWhats.classList.add("btn-whats");
     btnWhats.style.padding = "6px";
     btnWhats.style.borderRadius = "8px";
-    btnWhats.style.width = "100px";
     btnWhats.onclick = async () => {
       try {
         const cfg = await getConfigDaLoja(loja);
@@ -445,11 +478,10 @@ function exibirLista(listaProdutos) {
 
     // REBAIXAR
     const btnRebaixar = document.createElement("button");
-    btnRebaixar.style.background = cor;
+    btnRebaixar.classList.add("btn-rebaixar");
     btnRebaixar.textContent = `🔻 Rebaixar (${diff}d)`;
     btnRebaixar.style.padding = "6px";
     btnRebaixar.style.borderRadius = "8px";
-    btnRebaixar.style.width = "100px";
     btnRebaixar.onclick = () => rebaixarProduto(p.id);
     botoes.appendChild(btnRebaixar);
 
@@ -457,19 +489,17 @@ function exibirLista(listaProdutos) {
     if (cargo !== "responsavel") {
       const btnEditar = document.createElement("button");
       btnEditar.textContent = "✏️ Editar";
-      btnEditar.style.background = "#4d9cff";
+      btnEditar.classList.add("btn-edit");
       btnEditar.style.padding = "6px";
       btnEditar.style.borderRadius = "8px";
-       btnEditar.style.width = "100px";
       btnEditar.onclick = () => location.href = `produto.html?id=${encodeURIComponent(p.id)}&loja=${encodeURIComponent(loja)}`;
       botoes.appendChild(btnEditar);
 
       const btnExcluir = document.createElement("button");
       btnExcluir.textContent = "🗑️ Excluir";
-      btnExcluir.style.background = "#ff6b6b";
+      btnExcluir.classList.add("btn-del");
       btnExcluir.style.padding = "6px";
       btnExcluir.style.borderRadius = "8px";
-      btnExcluir.style.width = "100px";
       btnExcluir.onclick = async () => {
         if (!confirm(`Excluir ${p.nome || "produto"}?`)) return;
         try {
